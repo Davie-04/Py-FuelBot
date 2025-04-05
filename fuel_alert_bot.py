@@ -9,10 +9,11 @@ DISCORD_BOT_TOKEN = os.getenv("DISCORD_BOT_TOKEN")
 TOKEN_FILE = "eve_tokens.json"
 ESI_BASE = "https://esi.evetech.net/latest"
 
-# === Load EVE token from file (You can replace this with secrets or environment variable as needed) ===
+# === Load EVE token from file ===
 def load_access_token():
-    access_token = os.getenv('EVE_REFRESH_TOKEN')
-    return access_token
+    with open(TOKEN_FILE, "r") as f:
+        tokens = json.load(f)
+    return tokens["access_token"]
 
 # === Corporation ID from token ===
 def get_corp_id(access_token):
