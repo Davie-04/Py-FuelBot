@@ -8,7 +8,12 @@ on:
 jobs:
   run-fuelbot:
     runs-on: ubuntu-latest
-
+    env:
+      CLIENT_ID: ${{ secrets.CLIENT_ID }}
+      CLIENT_SECRET: ${{ secrets.CLIENT_SECRET }}
+      DISCORD_BOT_TOKEN: ${{ secrets.DISCORD_BOT_TOKEN }}
+      DISCORD_CHANNEL_ID: ${{ secrets.DISCORD_CHANNEL_ID }}
+    
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4
