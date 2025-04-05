@@ -53,7 +53,6 @@ def get_system_name(access_token, system_id):
     if res.ok:
         return res.json().get("name", "Unknown System")
     else:
-        print(f"❌ Error fetching system name for ID {system_id}. Status: {res.status_code}")
         return "Unknown System"
 
 # === Get structures ===
@@ -92,7 +91,11 @@ def compose_fuel_alerts(structures, access_token):
 
         for threshold in thresholds:
             if 0 < hours_left <= threshold:
-                name = s.get("structure_name", f"Structure {s['structure_id']}")
+                # Fetch structure name, if available
+                name = s.get("structure_name")
+                if not name:  # If structure_name is missing, fall back to the ID
+                    name = f"Structure {s['structure_id']}"
+
                 structure_type = s.get("structure_type_id", "Unknown Type")
                 system_name = get_system_name(access_token, s.get("solar_system_id"))
                 hours, rem = divmod(time_left.total_seconds(), 3600)
