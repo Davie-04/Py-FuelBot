@@ -1,0 +1,28 @@
+name: Daily EVE Fuel Check
+
+on:
+  schedule:
+    - cron: '0 9 * * *'  # Runs at 09:00 UTC daily
+  workflow_dispatch:     # Also allow manual runs from GitHub UI
+
+jobs:
+  run-fuelbot:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+
+      - name: Install dependencies
+        run: pip install requests
+
+      - name: Create token file
+        run: echo "${{ secrets.EVE_TOKENS_JSON }}" > eve_tokens.json
+
+      - name: Run fuel alert bot
+        run: python fuel_alert_bot.py
