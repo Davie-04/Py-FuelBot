@@ -121,7 +121,9 @@ def compose_fuel_alerts(structures, access_token):
                     f"**{name}** ({structure_type})\n"
                     f"System: {system_name}\n"
                     f"Fuel remaining: {int(hours)}h {minutes}m\n"
-                    f"Alerted at: {alert_time}"
+                    f"Alerted at: {alert_time}\n"
+                    f"--------------------"
+                    
                 )
                 alerts[threshold].append(msg)
                 break
