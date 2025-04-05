@@ -28,7 +28,7 @@ jobs:
 
       - name: Create token file
         run: |
-          echo -n "{\"refresh_token\": \"${{ secrets.EVE_TOKENS_JSON }}\"}" > eve_tokens.json
+          python -c "import json; json.dump({'refresh_token': '${{ secrets.EVE_TOKENS_JSON }}'}, open('eve_tokens.json', 'w'))"
 
       - name: Run fuel alert bot
         run: python fuel_alert_bot.py
