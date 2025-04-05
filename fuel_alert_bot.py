@@ -28,7 +28,6 @@ def refresh_access_token():
     response = requests.post(url, headers=headers, data=data)
     if response.ok:
         tokens = response.json()
-        print("✅ Access token refreshed successfully.")  # Debugging line
         return tokens['access_token']  # Return the new access token
     else:
         raise Exception(f"Failed to refresh access token. Status: {response.status_code}, Response: {response.text}")
@@ -44,7 +43,6 @@ def get_corp_id(access_token):
     whoami = requests.get("https://login.eveonline.com/oauth/verify", headers=headers).json()
     char_id = whoami["CharacterID"]
     char_info = requests.get(f"{ESI_BASE}/characters/{char_id}/", headers=headers).json()
-    print(f"✅ Corporation ID: {char_info['corporation_id']}")  # Debugging line
     return char_info["corporation_id"]
 
 # === Get system name from ID ===
@@ -53,19 +51,28 @@ def get_system_name(access_token, system_id):
     url = f"{ESI_BASE}/universe/systems/{system_id}/"
     res = requests.get(url, headers=headers)
     if res.ok:
-        system_name = res.json().get("name", "Unknown System")
-        print(f"✅ System found: {system_name}")  # Debugging line
-        return system_name
+        return res.json().get("name", "Unknown System")
     else:
-        print(f"❌ Failed to fetch system name for ID: {system_id}")  # Debugging line
-        return "Unknown System"
+        return f"Error fetching system {system_id}: {res.status_code}"
+
+# === Get structure type from ID ===
+def get_structure_type(structure_type_id):
+    # These are the most common structure types; the full list can be found in the official EVE API docs
+    structure_types = {
+        35825: "Raitaru",
+        35826: "Azbel",
+        35827: "Fortizar",
+        35828: "Athanor",
+        35829: "Tatara"
+    }
+    return structure_types.get(structure_type_id, "Unknown Type")
 
 # === Get structures ===
 def get_structures(access_token, corp_id):
     headers = {"Authorization": f"Bearer {access_token}"}
     url = f"{ESI_BASE}/corporations/{corp_id}/structures/?datasource=tranquility"
     res = requests.get(url, headers=headers)
-    res.raise_for_status()  # If the request failed, an exception will be raised
+    res.raise_for_status()
     return res.json()
 
 # === Post message to Discord ===
@@ -86,7 +93,6 @@ def compose_fuel_alerts(structures, access_token):
     alerts = {t: [] for t in thresholds}
 
     for s in structures:
-        print(f"✅ Structure Data: {s}")  # Debugging line to check structure data
         fuel_expires = s.get("fuel_expires")
         if not fuel_expires:
             continue
@@ -97,12 +103,9 @@ def compose_fuel_alerts(structures, access_token):
 
         for threshold in thresholds:
             if 0 < hours_left <= threshold:
-                # Ensure we are fetching the correct structure name
-                name = s.get("name", f"Structure {s['structure_id']}")
-                structure_type = s.get("structure_type_id", "Unknown Type")
-                system_id = s.get("solar_system_id")  # Get the system ID
-                system_name = get_system_name(access_token, system_id) if system_id else "Unknown System"
-                
+                name = s.get("structure_name", f"Structure {s['structure_id']}")
+                structure_type = get_structure_type(s.get("structure_type_id", 0))
+                system_name = get_system_name(access_token, s.get("solar_system_id", 0))
                 hours, rem = divmod(time_left.total_seconds(), 3600)
                 minutes = int(rem // 60)
                 alert_time = now.strftime("%Y-%m-%d %H:%M UTC")
