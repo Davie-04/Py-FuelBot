@@ -47,6 +47,19 @@ def get_corp_id(access_token):
     print(f"✅ Corporation ID: {char_info['corporation_id']}")  # Debugging line
     return char_info["corporation_id"]
 
+# === Get system name from ID ===
+def get_system_name(access_token, system_id):
+    headers = {"Authorization": f"Bearer {access_token}"}
+    url = f"{ESI_BASE}/universe/systems/{system_id}/"
+    res = requests.get(url, headers=headers)
+    if res.ok:
+        system_name = res.json().get("name", "Unknown System")
+        print(f"✅ System found: {system_name}")  # Debugging line
+        return system_name
+    else:
+        print(f"❌ Failed to fetch system name for ID: {system_id}, Status Code: {res.status_code}, Response: {res.text}")  # Additional debugging info
+        return "Unknown System"
+
 # === Get structure type name from type_id ===
 def get_structure_type_name(access_token, type_id):
     headers = {"Authorization": f"Bearer {access_token}"}
@@ -59,19 +72,6 @@ def get_structure_type_name(access_token, type_id):
     else:
         print(f"❌ Failed to fetch structure type for ID: {type_id}")  # Debugging line
         return "Unknown Type"
-
-# === Get system name from ID ===
-def get_system_name(access_token, system_id):
-    headers = {"Authorization": f"Bearer {access_token}"}
-    url = f"{ESI_BASE}/universe/systems/{system_id}/"
-    res = requests.get(url, headers=headers)
-    if res.ok:
-        system_name = res.json().get("name", "Unknown System")
-        print(f"✅ System found: {system_name}")  # Debugging line
-        return system_name
-    else:
-        print(f"❌ Failed to fetch system name for ID: {system_id}")  # Debugging line
-        return "Unknown System"
 
 # === Get structures ===
 def get_structures(access_token, corp_id):
@@ -108,17 +108,15 @@ def compose_fuel_alerts(structures, access_token):
         time_left = expires_dt - now
         hours_left = time_left.total_seconds() / 3600
 
-        # Get structure and type name
-        name = s.get("name", f"Structure {s['structure_id']}")
-        structure_type_id = s.get("type_id", "Unknown Type")
-        structure_type = get_structure_type_name(access_token, structure_type_id)
-        
-        # Get system name after fetching structure data
-        system_id = s.get("solar_system_id")
-        system_name = get_system_name(access_token, system_id) if system_id else "Unknown System"
-        
         for threshold in thresholds:
             if 0 < hours_left <= threshold:
+                # Ensure we are fetching the correct structure name
+                name = s.get("name", f"Structure {s['structure_id']}")
+                structure_type_id = s.get("type_id", "Unknown Type")
+                system_id = s.get("solar_system_id")  # Get the system ID
+                system_name = get_system_name(access_token, system_id) if system_id else "Unknown System"
+                structure_type = get_structure_type_name(access_token, structure_type_id)
+                
                 hours, rem = divmod(time_left.total_seconds(), 3600)
                 minutes = int(rem // 60)
                 alert_time = now.strftime("%Y-%m-%d %H:%M UTC")
