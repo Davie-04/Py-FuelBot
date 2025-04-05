@@ -1,45 +1,33 @@
 import os
 import json
 import requests
-import base64  # Add this import for base64 encoding
 from datetime import datetime, timedelta, timezone
 
 # === Configuration ===
 DISCORD_CHANNEL_ID = os.getenv("DISCORD_CHANNEL_ID")
 DISCORD_BOT_TOKEN = os.getenv("DISCORD_BOT_TOKEN")
-TOKEN_FILE = "refresh_token.txt"  # This file will be used for refresh token
+TOKEN_FILE = "refresh_token.txt"  # This file will contain the refresh token
 ESI_BASE = "https://esi.evetech.net/latest"
 
 # === Load EVE token from file ===
 def load_refresh_token():
     with open(TOKEN_FILE, "r") as f:
-        tokens = json.load(f)
-    return tokens["refresh_token"]
+        token_data = json.load(f)
+    return token_data["refresh_token"]
 
-def generate_access_token(refresh_token):
-    TOKEN_URL = "https://login.eveonline.com/v2/oauth/token"
-    CLIENT_ID = os.getenv("CLIENT_ID")
-    CLIENT_SECRET = os.getenv("CLIENT_SECRET")
-
-    credentials = f"{CLIENT_ID}:{CLIENT_SECRET}"
-    b64_credentials = base64.b64encode(credentials.encode()).decode()  # This is where base64 is used
-    
+# === Get access token from refresh token ===
+def get_access_token(refresh_token):
     headers = {
-        "Authorization": f"Basic {b64_credentials}",
-        "Content-Type": "application/x-www-form-urlencoded"
+        "Content-Type": "application/x-www-form-urlencoded",
+        "Authorization": f"Basic {os.getenv('CLIENT_ID')}:{os.getenv('CLIENT_SECRET')}"
     }
-
     data = {
         "grant_type": "refresh_token",
         "refresh_token": refresh_token
     }
-
-    response = requests.post(TOKEN_URL, headers=headers, data=data)
-
-    if response.status_code == 200:
-        return response.json()["access_token"]
-    else:
-        raise Exception(f"Error refreshing token: {response.status_code} - {response.text}")
+    response = requests.post("https://login.eveonline.com/v2/oauth/token", data=data, headers=headers)
+    response.raise_for_status()
+    return response.json()["access_token"]
 
 # === Corporation ID from token ===
 def get_corp_id(access_token):
@@ -114,7 +102,7 @@ def compose_fuel_alerts(structures, access_token):
 def main():
     try:
         refresh_token = load_refresh_token()
-        access_token = generate_access_token(refresh_token)
+        access_token = get_access_token(refresh_token)
         corp_id = get_corp_id(access_token)
         structures = get_structures(access_token, corp_id)
         alerts = compose_fuel_alerts(structures, access_token)
