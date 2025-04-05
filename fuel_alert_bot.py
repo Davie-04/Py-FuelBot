@@ -1,33 +1,21 @@
-import requests
+import os
 import json
+import requests
 from datetime import datetime, timedelta, timezone
 
 # === Configuration ===
-DISCORD_CHANNEL_ID = "1353643987822706721"
-DISCORD_BOT_TOKEN = "${{ secrets.DISCORD_BOT_TOKEN }}"
-CLIENT_ID = "${{ secrets.CLIENT_ID }}"
-CLIENT_SECRET = "${{ secrets.CLIENT_SECRET }}"
+DISCORD_CHANNEL_ID = os.getenv("DISCORD_CHANNEL_ID")
+DISCORD_BOT_TOKEN = os.getenv("DISCORD_BOT_TOKEN")
+TOKEN_FILE = "eve_tokens.json"
 ESI_BASE = "https://esi.evetech.net/latest"
 
-def load_refresh_token():
-    with open("eve_tokens.json", "r") as f:
+# === Load EVE token from file ===
+def load_access_token():
+    with open(TOKEN_FILE, "r") as f:
         tokens = json.load(f)
-    return tokens["refresh_token"]
+    return tokens["access_token"]
 
-def refresh_access_token():
-    refresh_token = load_refresh_token()
-    data = {
-        "grant_type": "refresh_token",
-        "refresh_token": refresh_token
-    }
-    headers = {
-        "Authorization": f"Basic {requests.auth._basic_auth_str(CLIENT_ID, CLIENT_SECRET).split(' ')[1]}",
-        "Content-Type": "application/x-www-form-urlencoded"
-    }
-    res = requests.post("https://login.eveonline.com/v2/oauth/token", data=data, headers=headers)
-    res.raise_for_status()
-    return res.json()["access_token"]
-
+# === Corporation ID from token ===
 def get_corp_id(access_token):
     headers = {"Authorization": f"Bearer {access_token}"}
     whoami = requests.get("https://login.eveonline.com/oauth/verify", headers=headers).json()
@@ -35,14 +23,14 @@ def get_corp_id(access_token):
     char_info = requests.get(f"{ESI_BASE}/characters/{char_id}/", headers=headers).json()
     return char_info["corporation_id"]
 
+# === Get system name from ID ===
 def get_system_name(access_token, system_id):
     headers = {"Authorization": f"Bearer {access_token}"}
     url = f"{ESI_BASE}/universe/systems/{system_id}/"
     res = requests.get(url, headers=headers)
-    if res.ok:
-        return res.json().get("name", "Unknown System")
-    return "Unknown System"
+    return res.json().get("name", "Unknown System") if res.ok else "Unknown System"
 
+# === Get structures ===
 def get_structures(access_token, corp_id):
     headers = {"Authorization": f"Bearer {access_token}"}
     url = f"{ESI_BASE}/corporations/{corp_id}/structures/?datasource=tranquility"
@@ -50,6 +38,7 @@ def get_structures(access_token, corp_id):
     res.raise_for_status()
     return res.json()
 
+# === Post message to Discord ===
 def post_to_discord(message):
     url = f"https://discord.com/api/v10/channels/{DISCORD_CHANNEL_ID}/messages"
     headers = {
@@ -60,35 +49,61 @@ def post_to_discord(message):
     res = requests.post(url, headers=headers, json=data)
     res.raise_for_status()
 
+# === Compose alert messages ===
+def compose_fuel_alerts(structures, access_token):
+    now = datetime.now(timezone.utc)
+    thresholds = [3*24, 48, 24]  # in hours
+    alerts = {t: [] for t in thresholds}
+
+    for s in structures:
+        fuel_expires = s.get("fuel_expires")
+        if not fuel_expires:
+            continue
+
+        expires_dt = datetime.fromisoformat(fuel_expires.replace("Z", "+00:00"))
+        time_left = expires_dt - now
+        hours_left = time_left.total_seconds() / 3600
+
+        for threshold in thresholds:
+            if 0 < hours_left <= threshold:
+                name = s.get("structure_name", f"Structure {s['structure_id']}")
+                structure_type = s.get("structure_type_id", "Unknown Type")
+                system_name = get_system_name(access_token, s.get("solar_system_id"))
+                hours, rem = divmod(time_left.total_seconds(), 3600)
+                minutes = int(rem // 60)
+                alert_time = now.strftime("%Y-%m-%d %H:%M UTC")
+
+                msg = (
+                    f"**{name}** ({structure_type})\n"
+                    f"System: {system_name}\n"
+                    f"Fuel remaining: {int(hours)}h {minutes}m\n"
+                    f"Alerted at: {alert_time}"
+                )
+                alerts[threshold].append(msg)
+                break
+
+    return alerts
+
+# === Main ===
 def main():
     try:
-        access_token = refresh_access_token()
+        access_token = load_access_token()
         corp_id = get_corp_id(access_token)
         structures = get_structures(access_token, corp_id)
+        alerts = compose_fuel_alerts(structures, access_token)
 
-        now = datetime.now(timezone.utc)
-        fake_fuel_time = now + timedelta(days=60)  # Force structure to be below threshold
-        low_fuel_structures = []
+        sent = False
+        for threshold, msgs in sorted(alerts.items()):
+            if msgs:
+                label = f"⚠️ Fuel Alert: {threshold}h remaining"
+                message = "\n\n".join([label] + msgs)
+                post_to_discord(message)
+                sent = True
 
-        for s in structures:
-            structure_id = s["structure_id"]
-            name = s.get("structure_name", f"Structure {structure_id}")
-            structure_type = s.get("structure_type_id", "Unknown Type")
-            system_name = get_system_name(access_token, s.get("solar_system_id"))
-            time_left = fake_fuel_time - now
-            hours, remainder = divmod(time_left.total_seconds(), 3600)
-            minutes = int(remainder // 60)
-            alert_time = now.strftime("%Y-%m-%d %H:%M UTC")
-
-            msg = f"**{name}** ({structure_type})\nSystem: {system_name}\nFuel remaining: {int(hours)}h {minutes}m\nAlerted at: {alert_time}"
-            low_fuel_structures.append(msg)
-
-        if low_fuel_structures:
-            message = "\n\n".join(["🚨 **Test Fuel Alert** 🚨"] + low_fuel_structures)
-            post_to_discord(message)
-            print("✅ Test fuel alert posted to Discord.")
+        if sent:
+            print("✅ Fuel alerts sent to Discord.")
         else:
-            print("✅ All structures are above threshold.")
+            print("✅ No alerts needed. All structures have sufficient fuel.")
 
     except Exception as e:
         print("❌ Error:", str(e))
