@@ -47,7 +47,7 @@ def get_corp_id(access_token):
     print(f"✅ Corporation ID: {char_info['corporation_id']}")  # Debugging line
     return char_info["corporation_id"]
 
-# === Get system name from structure name (by splitting the name at the hyphen) ===
+# === Get system name from structure name (splitting at the hyphen) ===
 def get_system_name_from_structure_name(structure_name):
     # Extract system name from the structure name by splitting at the hyphen.
     parts = structure_name.split(" - ")
@@ -108,8 +108,11 @@ def compose_fuel_alerts(structures, access_token):
                 structure_type_id = s.get("type_id", "Unknown Type")
                 structure_type = get_structure_type_name(access_token, structure_type_id)
                 
+                # Extract structure name (remove everything before and including the hyphen)
+                structure_name = name.split(" - ")[1] if " - " in name else name
+                
                 # Extract system name from the structure name
-                system_name = get_system_name_from_structure_name(name)
+                system_name = get_system_name_from_structure_name(structure_name)
                 
                 hours, rem = divmod(time_left.total_seconds(), 3600)
                 minutes = int(rem // 60)
@@ -118,7 +121,7 @@ def compose_fuel_alerts(structures, access_token):
                 msg = (
                     f"  ❗ Fuel Alert ❗ \n"
                     f"-------------------- \n"
-                    f"**{name}** ({structure_type})\n"
+                    f"**{structure_name}** ({structure_type})\n"
                     f"System: {system_name}\n"
                     f"Fuel remaining: {int(hours)}h {minutes}m\n"
                     f"Alerted at: {alert_time}\n"
@@ -141,7 +144,7 @@ def main():
         sent = False
         for threshold, msgs in sorted(alerts.items()):
             if msgs:
-                label = f"❗ Fuel Alert ❗"
+                label = f"."
                 message = "\n\n".join([label] + msgs)
                 post_to_discord(message)
                 sent = True
