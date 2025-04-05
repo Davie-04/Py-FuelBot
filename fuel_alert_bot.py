@@ -108,14 +108,14 @@ def compose_fuel_alerts(structures, access_token):
         time_left = expires_dt - now
         hours_left = time_left.total_seconds() / 3600
 
-        # Get system name after fetching structure data
-        system_id = s.get("solar_system_id")
-        system_name = get_system_name(access_token, system_id) if system_id else "Unknown System"
-        
-        # Ensure we are fetching the correct structure name
+        # Get structure and type name
         name = s.get("name", f"Structure {s['structure_id']}")
         structure_type_id = s.get("type_id", "Unknown Type")
         structure_type = get_structure_type_name(access_token, structure_type_id)
+        
+        # Get system name after fetching structure data
+        system_id = s.get("solar_system_id")
+        system_name = get_system_name(access_token, system_id) if system_id else "Unknown System"
         
         for threshold in thresholds:
             if 0 < hours_left <= threshold:
