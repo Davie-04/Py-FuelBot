@@ -1,7 +1,7 @@
 import os
 import json
 import requests
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 
 # === Configuration ===
 DISCORD_CHANNEL_ID = os.getenv("DISCORD_CHANNEL_ID")
@@ -60,13 +60,18 @@ def get_system_name(access_token, system_id):
         print(f"❌ Failed to fetch system name for ID: {system_id}")  # Debugging line
         return "Unknown System"
 
-# === Map structure type ID to its corresponding name ===
-def get_structure_type_name(structure_type_id):
-    structure_type_mapping = {
-        35825: "Raitaru",  # Add other mappings if necessary
-        # Add other types here...
-    }
-    return structure_type_mapping.get(structure_type_id, "Unknown Type")
+# === Get structure type name from type_id ===
+def get_structure_type_name(access_token, type_id):
+    headers = {"Authorization": f"Bearer {access_token}"}
+    url = f"{ESI_BASE}/universe/types/{type_id}/"
+    res = requests.get(url, headers=headers)
+    if res.ok:
+        structure_type = res.json().get("name", "Unknown Type")
+        print(f"✅ Structure type found: {structure_type}")  # Debugging line
+        return structure_type
+    else:
+        print(f"❌ Failed to fetch structure type for ID: {type_id}")  # Debugging line
+        return "Unknown Type"
 
 # === Get structures ===
 def get_structures(access_token, corp_id):
@@ -107,9 +112,10 @@ def compose_fuel_alerts(structures, access_token):
             if 0 < hours_left <= threshold:
                 # Ensure we are fetching the correct structure name
                 name = s.get("name", f"Structure {s['structure_id']}")
-                structure_type = get_structure_type_name(s.get("structure_type_id"))
+                structure_type_id = s.get("type_id", "Unknown Type")
                 system_id = s.get("solar_system_id")  # Get the system ID
                 system_name = get_system_name(access_token, system_id) if system_id else "Unknown System"
+                structure_type = get_structure_type_name(access_token, structure_type_id)
                 
                 hours, rem = divmod(time_left.total_seconds(), 3600)
                 minutes = int(rem // 60)
