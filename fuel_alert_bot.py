@@ -50,22 +50,7 @@ def get_system_name(access_token, system_id):
     headers = {"Authorization": f"Bearer {access_token}"}
     url = f"{ESI_BASE}/universe/systems/{system_id}/"
     res = requests.get(url, headers=headers)
-    if res.ok:
-        return res.json().get("name", "Unknown System")
-    else:
-        return f"Error fetching system {system_id}: {res.status_code}"
-
-# === Get structure type from ID ===
-def get_structure_type(structure_type_id):
-    # These are the most common structure types; the full list can be found in the official EVE API docs
-    structure_types = {
-        35825: "Raitaru",
-        35826: "Azbel",
-        35827: "Fortizar",
-        35828: "Athanor",
-        35829: "Tatara"
-    }
-    return structure_types.get(structure_type_id, "Unknown Type")
+    return res.json().get("name", "Unknown System") if res.ok else "Unknown System"
 
 # === Get structures ===
 def get_structures(access_token, corp_id):
@@ -104,8 +89,9 @@ def compose_fuel_alerts(structures, access_token):
         for threshold in thresholds:
             if 0 < hours_left <= threshold:
                 name = s.get("structure_name", f"Structure {s['structure_id']}")
-                structure_type = get_structure_type(s.get("structure_type_id", 0))
-                system_name = get_system_name(access_token, s.get("solar_system_id", 0))
+                structure_type_id = s.get("structure_type_id")
+                structure_type = get_structure_type(structure_type_id)
+                system_name = get_system_name(access_token, s.get("solar_system_id"))
                 hours, rem = divmod(time_left.total_seconds(), 3600)
                 minutes = int(rem // 60)
                 alert_time = now.strftime("%Y-%m-%d %H:%M UTC")
@@ -120,6 +106,15 @@ def compose_fuel_alerts(structures, access_token):
                 break
 
     return alerts
+
+# === Get structure type ===
+def get_structure_type(structure_type_id):
+    # Mapping of structure type IDs to names (example)
+    structure_types = {
+        35825: "Raitaru",  # This ID should correspond to Raitaru type
+        # Add other structure types here if needed
+    }
+    return structure_types.get(structure_type_id, "Unknown Type")
 
 # === Main ===
 def main():
