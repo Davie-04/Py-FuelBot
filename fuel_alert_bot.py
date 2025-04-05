@@ -54,6 +54,7 @@ def get_system_name(access_token, system_id):
     res = requests.get(url, headers=headers)
     
     # Debugging response details
+    print(f"Request URL: {url}")  # Log the URL we are hitting
     print(f"Response status: {res.status_code}")  # Log status code
     print(f"Response content: {res.text}")  # Log full response content for debugging
 
