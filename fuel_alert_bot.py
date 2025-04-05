@@ -6,28 +6,25 @@ from datetime import datetime, timedelta, timezone
 # === Configuration ===
 DISCORD_CHANNEL_ID = os.getenv("DISCORD_CHANNEL_ID")
 DISCORD_BOT_TOKEN = os.getenv("DISCORD_BOT_TOKEN")
-EVE_REFRESH_TOKEN = os.getenv("EVE_REFRESH_TOKEN")  # Now using the GitHub secret directly
-TOKEN_URL = "https://login.eveonline.com/v2/oauth/token"
 ESI_BASE = "https://esi.evetech.net/latest"
 
-# === Get access token using the refresh token ===
-def get_access_token():
+# Hardcoded EVE_REFRESH_TOKEN for testing
+EVE_REFRESH_TOKEN = "sK83A1suTEyWX+rGE7Sgdg=="
+
+# === Load EVE token from GitHub secrets or hardcoded ===
+def load_access_token():
+    headers = {
+        "Content-Type": "application/x-www-form-urlencoded",
+        "Authorization": "Basic " + base64.b64encode(f"{os.getenv('CLIENT_ID')}:{os.getenv('CLIENT_SECRET')}".encode()).decode()
+    }
     data = {
         "grant_type": "refresh_token",
-        "refresh_token": EVE_REFRESH_TOKEN,
-        "client_id": os.getenv("CLIENT_ID"),
-        "client_secret": os.getenv("CLIENT_SECRET")
+        "refresh_token": EVE_REFRESH_TOKEN
     }
-
-    response = requests.post(TOKEN_URL, data=data)
-
+    response = requests.post("https://login.eveonline.com/v2/oauth/token", headers=headers, data=data)
     if response.status_code == 200:
         tokens = response.json()
-        access_token = tokens.get("access_token")
-        if access_token:
-            return access_token
-        else:
-            raise Exception("Access token not found in response.")
+        return tokens["access_token"]
     else:
         raise Exception(f"Failed to refresh access token. Status: {response.status_code}")
 
@@ -103,7 +100,7 @@ def compose_fuel_alerts(structures, access_token):
 # === Main ===
 def main():
     try:
-        access_token = get_access_token()  # Get the access token directly
+        access_token = load_access_token()
         corp_id = get_corp_id(access_token)
         structures = get_structures(access_token, corp_id)
         alerts = compose_fuel_alerts(structures, access_token)
