@@ -13,15 +13,6 @@ EVE_REFRESH_TOKEN = os.getenv("EVE_REFRESH_TOKEN")  # Access refresh token from 
 
 ESI_BASE = "https://esi.evetech.net/latest"
 
-# Structure Type ID to Name Mapping (Structure Type IDs can be found in the EVE Online docs)
-STRUCTURE_TYPE_MAP = {
-    35825: "Raitaru",
-    35826: "Azbel",
-    35827: "Tatara",
-    35828: "Athena",
-    # Add more mappings as necessary
-}
-
 # === Refresh the access token using the refresh token ===
 def refresh_access_token():
     url = "https://login.eveonline.com/v2/oauth/token"
@@ -69,9 +60,13 @@ def get_system_name(access_token, system_id):
         print(f"❌ Failed to fetch system name for ID: {system_id}")  # Debugging line
         return "Unknown System"
 
-# === Get structure type name from structure type ID ===
+# === Map structure type ID to its corresponding name ===
 def get_structure_type_name(structure_type_id):
-    return STRUCTURE_TYPE_MAP.get(structure_type_id, "Unknown Type")
+    structure_type_mapping = {
+        35825: "Raitaru",  # Add other mappings if necessary
+        # Add other types here...
+    }
+    return structure_type_mapping.get(structure_type_id, "Unknown Type")
 
 # === Get structures ===
 def get_structures(access_token, corp_id):
@@ -112,7 +107,7 @@ def compose_fuel_alerts(structures, access_token):
             if 0 < hours_left <= threshold:
                 # Ensure we are fetching the correct structure name
                 name = s.get("name", f"Structure {s['structure_id']}")
-                structure_type = get_structure_type_name(s.get("structure_type_id", "Unknown Type"))
+                structure_type = get_structure_type_name(s.get("structure_type_id"))
                 system_id = s.get("solar_system_id")  # Get the system ID
                 system_name = get_system_name(access_token, system_id) if system_id else "Unknown System"
                 
