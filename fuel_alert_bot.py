@@ -48,24 +48,10 @@ def get_corp_id(access_token):
     return char_info["corporation_id"]
 
 # === Get system name from ID ===
-def get_system_name(access_token, system_id):
-    headers = {"Authorization": f"Bearer {access_token}"}
-    url = f"{ESI_BASE}/universe/systems/{system_id}/"
-    
-    print(f"✅ Requesting system name for system_id: {system_id} (URL: {url})")  # Debugging line for URL
-
-    res = requests.get(url, headers=headers)
-    
-    # Log the response status and content for debugging
-    if res.ok:
-        system_name = res.json().get("name", "Unknown System")
-        print(f"✅ System found: {system_name}")  # Debugging line for successful response
-        return system_name
-    else:
-        print(f"❌ Failed to fetch system name for ID: {system_id}")  # Debugging line for failed response
-        print(f"❌ Status code: {res.status_code}")  # Log status code
-        print(f"❌ Response: {res.text}")  # Log the full response for further debugging
-        return "Unknown System"
+def get_system_name_from_structure_name(structure_name):
+    # Extract system name from the structure name by splitting at the hyphen.
+    parts = structure_name.split(" - ")
+    return parts[0] if len(parts) > 1 else "Unknown System"
 
 # === Get structure type name from type_id ===
 def get_structure_type_name(access_token, type_id):
@@ -120,9 +106,10 @@ def compose_fuel_alerts(structures, access_token):
                 # Ensure we are fetching the correct structure name
                 name = s.get("name", f"Structure {s['structure_id']}")
                 structure_type_id = s.get("type_id", "Unknown Type")
-                system_id = s.get("solar_system_id")  # Get the system ID
-                system_name = get_system_name(access_token, system_id) if system_id else "Unknown System"
                 structure_type = get_structure_type_name(access_token, structure_type_id)
+                
+                # Extract system name from the structure name
+                system_name = get_system_name_from_structure_name(name)
                 
                 hours, rem = divmod(time_left.total_seconds(), 3600)
                 minutes = int(rem // 60)
