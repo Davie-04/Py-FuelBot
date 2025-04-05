@@ -47,7 +47,7 @@ def get_corp_id(access_token):
     print(f"✅ Corporation ID: {char_info['corporation_id']}")  # Debugging line
     return char_info["corporation_id"]
 
-# === Get system name from ID ===
+# === Get system name from structure name (by splitting the name at the hyphen) ===
 def get_system_name_from_structure_name(structure_name):
     # Extract system name from the structure name by splitting at the hyphen.
     parts = structure_name.split(" - ")
@@ -141,7 +141,7 @@ def main():
         sent = False
         for threshold, msgs in sorted(alerts.items()):
             if msgs:
-                label = f"."
+                label = f"❗ Fuel Alert ❗"
                 message = "\n\n".join([label] + msgs)
                 post_to_discord(message)
                 sent = True
