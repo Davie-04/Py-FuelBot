@@ -74,7 +74,7 @@ def post_to_discord(message):
 # === Compose alert messages ===
 def compose_fuel_alerts(structures, access_token):
     now = datetime.now(timezone.utc)
-    thresholds = [3*24, 48, 24]  # in hours
+    thresholds = [500, 48, 24]  # in hours
     alerts = {t: [] for t in thresholds}
 
     for s in structures:
