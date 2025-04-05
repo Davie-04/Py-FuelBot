@@ -51,10 +51,8 @@ def get_system_name(access_token, system_id):
     url = f"{ESI_BASE}/universe/systems/{system_id}/"
     res = requests.get(url, headers=headers)
     if res.ok:
-        print(f"System Name Retrieved: {res.json().get('name')}")
         return res.json().get("name", "Unknown System")
     else:
-        print(f"Error fetching system name for system ID: {system_id}")
         return "Unknown System"
 
 # === Get structures ===
@@ -94,8 +92,7 @@ def compose_fuel_alerts(structures, access_token):
         for threshold in thresholds:
             if 0 < hours_left <= threshold:
                 name = s.get("structure_name", f"Structure {s['structure_id']}")
-                structure_type_id = s.get("structure_type_id")
-                structure_type = get_structure_type(structure_type_id)
+                structure_type = s.get("structure_type_id", "Unknown Type")
                 system_name = get_system_name(access_token, s.get("solar_system_id"))
                 hours, rem = divmod(time_left.total_seconds(), 3600)
                 minutes = int(rem // 60)
@@ -111,15 +108,6 @@ def compose_fuel_alerts(structures, access_token):
                 break
 
     return alerts
-
-# === Get structure type ===
-def get_structure_type(structure_type_id):
-    # Mapping of structure type IDs to names (example)
-    structure_types = {
-        35825: "Raitaru",  # This ID should correspond to Raitaru type
-        # Add other structure types here if needed
-    }
-    return structure_types.get(structure_type_id, "Unknown Type")
 
 # === Main ===
 def main():
