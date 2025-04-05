@@ -50,10 +50,7 @@ def get_system_name(access_token, system_id):
     headers = {"Authorization": f"Bearer {access_token}"}
     url = f"{ESI_BASE}/universe/systems/{system_id}/"
     res = requests.get(url, headers=headers)
-    if res.ok:
-        return res.json().get("name", "Unknown System")
-    else:
-        return "Unknown System"
+    return res.json().get("name", "Unknown System") if res.ok else "Unknown System"
 
 # === Get structures ===
 def get_structures(access_token, corp_id):
@@ -91,11 +88,7 @@ def compose_fuel_alerts(structures, access_token):
 
         for threshold in thresholds:
             if 0 < hours_left <= threshold:
-                # Fetch structure name, if available
-                name = s.get("structure_name")
-                if not name:  # If structure_name is missing, fall back to the ID
-                    name = f"Structure {s['structure_id']}"
-
+                name = s.get("structure_name", f"Structure {s['structure_id']}")
                 structure_type = s.get("structure_type_id", "Unknown Type")
                 system_name = get_system_name(access_token, s.get("solar_system_id"))
                 hours, rem = divmod(time_left.total_seconds(), 3600)
