@@ -8,12 +8,36 @@ DISCORD_CHANNEL_ID = os.getenv("DISCORD_CHANNEL_ID")
 DISCORD_BOT_TOKEN = os.getenv("DISCORD_BOT_TOKEN")
 TOKEN_FILE = "eve_tokens.json"
 ESI_BASE = "https://esi.evetech.net/latest"
+TOKEN_URL = "https://login.eveonline.com/v2/oauth/token"
+CLIENT_ID = os.getenv("CLIENT_ID")
+CLIENT_SECRET = os.getenv("CLIENT_SECRET")
 
-# === Load EVE token from file ===
-def load_access_token():
+# === Load refresh token from file ===
+def load_refresh_token():
     with open(TOKEN_FILE, "r") as f:
         tokens = json.load(f)
-    return tokens["access_token"]
+    return tokens["refresh_token"]
+
+# === Get new access token using refresh token ===
+def get_access_token(refresh_token):
+    headers = {
+        "Authorization": f"Basic {base64.b64encode(f'{CLIENT_ID}:{CLIENT_SECRET}'.encode()).decode()}",
+        "Content-Type": "application/x-www-form-urlencoded"
+    }
+    data = {
+        "grant_type": "refresh_token",
+        "refresh_token": refresh_token
+    }
+    response = requests.post(TOKEN_URL, headers=headers, data=data)
+    if response.ok:
+        new_tokens = response.json()
+        with open(TOKEN_FILE, "w") as f:
+            json.dump(new_tokens, f, indent=2)
+        print(f"✅ Access token updated and saved to {TOKEN_FILE}")
+        return new_tokens["access_token"]
+    else:
+        print(f"❌ Failed to refresh access token. Status: {response.status_code}")
+        raise Exception("Failed to refresh access token")
 
 # === Corporation ID from token ===
 def get_corp_id(access_token):
@@ -87,7 +111,8 @@ def compose_fuel_alerts(structures, access_token):
 # === Main ===
 def main():
     try:
-        access_token = load_access_token()
+        refresh_token = load_refresh_token()
+        access_token = get_access_token(refresh_token)
         corp_id = get_corp_id(access_token)
         structures = get_structures(access_token, corp_id)
         alerts = compose_fuel_alerts(structures, access_token)
