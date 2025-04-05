@@ -3,7 +3,7 @@ name: Daily EVE Fuel Check
 on:
   schedule:
     - cron: '0 9 * * *'  # Runs at 09:00 UTC daily
-  workflow_dispatch:  # Also allow manual runs from GitHub UI
+  workflow_dispatch:     # Also allow manual runs from GitHub UI
 
 jobs:
   run-fuelbot:
@@ -13,7 +13,7 @@ jobs:
       CLIENT_SECRET: ${{ secrets.CLIENT_SECRET }}
       DISCORD_BOT_TOKEN: ${{ secrets.DISCORD_BOT_TOKEN }}
       DISCORD_CHANNEL_ID: ${{ secrets.DISCORD_CHANNEL_ID }}
-      EVE_REFRESH_TOKEN: ${{ secrets.EVE_REFRESH_TOKEN }}
+      EVE_REFRESH_TOKEN: ${{ secrets.EVE_REFRESH_TOKEN }}  # Correctly reference the secret
 
     steps:
       - name: Checkout repo
