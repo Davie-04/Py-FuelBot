@@ -27,7 +27,7 @@ jobs:
         run: pip install requests
 
       - name: Create token file
-        run: echo "${{ secrets.EVE_TOKENS_JSON }}" > eve_tokens.json
+        run: echo '${{ secrets.EVE_TOKENS_JSON }}' > eve_tokens.json
 
       - name: Run fuel alert bot
         run: python fuel_alert_bot.py
