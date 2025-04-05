@@ -1,6 +1,7 @@
 import os
 import json
 import requests
+import base64  # Add this import for base64 encoding
 from datetime import datetime, timedelta, timezone
 
 # === Configuration ===
@@ -21,7 +22,7 @@ def generate_access_token(refresh_token):
     CLIENT_SECRET = os.getenv("CLIENT_SECRET")
 
     credentials = f"{CLIENT_ID}:{CLIENT_SECRET}"
-    b64_credentials = base64.b64encode(credentials.encode()).decode()
+    b64_credentials = base64.b64encode(credentials.encode()).decode()  # This is where base64 is used
     
     headers = {
         "Authorization": f"Basic {b64_credentials}",
