@@ -1,35 +1,34 @@
 import os
 import json
 import requests
-import base64  # Add this import for base64 encoding
 from datetime import datetime, timedelta, timezone
 
 # === Configuration ===
 DISCORD_CHANNEL_ID = os.getenv("DISCORD_CHANNEL_ID")
 DISCORD_BOT_TOKEN = os.getenv("DISCORD_BOT_TOKEN")
+EVE_REFRESH_TOKEN = os.getenv("EVE_REFRESH_TOKEN")  # Now directly from GitHub Secrets
 ESI_BASE = "https://esi.evetech.net/latest"
 
-# Hardcoded EVE_REFRESH_TOKEN for testing
-EVE_REFRESH_TOKEN = "sK83A1suTEyWX+rGE7Sgdg=="
-
-# === Load EVE token from GitHub secrets or hardcoded ===
+# === Load EVE access token using refresh token ===
 def load_access_token():
+    # Use refresh token to get a new access token
+    token_url = "https://login.eveonline.com/v2/oauth/token"
     headers = {
-        "Content-Type": "application/x-www-form-urlencoded",
-        "Authorization": "Basic " + base64.b64encode(f"{os.getenv('CLIENT_ID')}:{os.getenv('CLIENT_SECRET')}".encode()).decode()
+        "Authorization": f"Basic {base64.b64encode(f'{CLIENT_ID}:{CLIENT_SECRET}'.encode()).decode()}",
+        "Content-Type": "application/x-www-form-urlencoded"
     }
     data = {
         "grant_type": "refresh_token",
         "refresh_token": EVE_REFRESH_TOKEN
     }
-    response = requests.post("https://login.eveonline.com/v2/oauth/token", headers=headers, data=data)
-    if response.status_code == 200:
+    response = requests.post(token_url, data=data, headers=headers)
+    if response.ok:
         tokens = response.json()
         return tokens["access_token"]
     else:
-        raise Exception(f"Failed to refresh access token. Status: {response.status_code}")
+        raise Exception(f"Error refreshing access token. Status: {response.status_code}")
 
-# === Corporation ID from token ===
+# === Get Corporation ID from token ===
 def get_corp_id(access_token):
     headers = {"Authorization": f"Bearer {access_token}"}
     whoami = requests.get("https://login.eveonline.com/oauth/verify", headers=headers).json()
@@ -61,6 +60,8 @@ def post_to_discord(message):
     }
     data = {"content": message}
     res = requests.post(url, headers=headers, json=data)
+    print(res.status_code)  # Log status code
+    print(res.text)         # Log response text
     res.raise_for_status()
 
 # === Compose alert messages ===
@@ -101,6 +102,7 @@ def compose_fuel_alerts(structures, access_token):
 # === Main ===
 def main():
     try:
+        # Load access token
         access_token = load_access_token()
         corp_id = get_corp_id(access_token)
         structures = get_structures(access_token, corp_id)
