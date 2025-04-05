@@ -1,22 +1,19 @@
 import requests
 import json
 from datetime import datetime, timedelta, timezone
-import os
 
 # === Configuration ===
-CLIENT_ID = os.environ["CLIENT_ID"]
-CLIENT_SECRET = os.environ["CLIENT_SECRET"]
-DISCORD_CHANNEL_ID = os.environ["DISCORD_CHANNEL_ID"]
-DISCORD_BOT_TOKEN = os.environ["DISCORD_BOT_TOKEN"]
+DISCORD_CHANNEL_ID = "1353643987822706721"
+DISCORD_BOT_TOKEN = "${{ secrets.DISCORD_BOT_TOKEN }}"
+CLIENT_ID = "${{ secrets.CLIENT_ID }}"
+CLIENT_SECRET = "${{ secrets.CLIENT_SECRET }}"
 ESI_BASE = "https://esi.evetech.net/latest"
 
-# Load stored refresh token
 def load_refresh_token():
     with open("eve_tokens.json", "r") as f:
         tokens = json.load(f)
     return tokens["refresh_token"]
 
-# Refresh the access token
 def refresh_access_token():
     refresh_token = load_refresh_token()
     data = {
@@ -31,7 +28,6 @@ def refresh_access_token():
     res.raise_for_status()
     return res.json()["access_token"]
 
-# Get character's corporation ID
 def get_corp_id(access_token):
     headers = {"Authorization": f"Bearer {access_token}"}
     whoami = requests.get("https://login.eveonline.com/oauth/verify", headers=headers).json()
@@ -39,7 +35,6 @@ def get_corp_id(access_token):
     char_info = requests.get(f"{ESI_BASE}/characters/{char_id}/", headers=headers).json()
     return char_info["corporation_id"]
 
-# Get system name by system_id
 def get_system_name(access_token, system_id):
     headers = {"Authorization": f"Bearer {access_token}"}
     url = f"{ESI_BASE}/universe/systems/{system_id}/"
@@ -48,14 +43,6 @@ def get_system_name(access_token, system_id):
         return res.json().get("name", "Unknown System")
     return "Unknown System"
 
-# Get structure type name (optional)
-def get_structure_type_name(type_id):
-    res = requests.get(f"{ESI_BASE}/universe/types/{type_id}/")
-    if res.ok:
-        return res.json().get("name", f"Type {type_id}")
-    return f"Type {type_id}"
-
-# Get structures owned by the corporation
 def get_structures(access_token, corp_id):
     headers = {"Authorization": f"Bearer {access_token}"}
     url = f"{ESI_BASE}/corporations/{corp_id}/structures/?datasource=tranquility"
@@ -63,7 +50,6 @@ def get_structures(access_token, corp_id):
     res.raise_for_status()
     return res.json()
 
-# Format and post to Discord
 def post_to_discord(message):
     url = f"https://discord.com/api/v10/channels/{DISCORD_CHANNEL_ID}/messages"
     headers = {
@@ -74,7 +60,6 @@ def post_to_discord(message):
     res = requests.post(url, headers=headers, json=data)
     res.raise_for_status()
 
-# === Main Logic ===
 def main():
     try:
         access_token = refresh_access_token()
@@ -82,39 +67,28 @@ def main():
         structures = get_structures(access_token, corp_id)
 
         now = datetime.now(timezone.utc)
-        thresholds = [24, 48, 72]  # Hours
-        alert_messages = {t: [] for t in thresholds}
+        fake_fuel_time = now + timedelta(days=60)  # Force structure to be below threshold
+        low_fuel_structures = []
 
         for s in structures:
-            fuel_expires = s.get("fuel_expires")
-            if fuel_expires:
-                expires_dt = datetime.fromisoformat(fuel_expires.replace("Z", "+00:00"))
-                time_left = expires_dt - now
-                hours_left = time_left.total_seconds() / 3600
+            structure_id = s["structure_id"]
+            name = s.get("structure_name", f"Structure {structure_id}")
+            structure_type = s.get("structure_type_id", "Unknown Type")
+            system_name = get_system_name(access_token, s.get("solar_system_id"))
+            time_left = fake_fuel_time - now
+            hours, remainder = divmod(time_left.total_seconds(), 3600)
+            minutes = int(remainder // 60)
+            alert_time = now.strftime("%Y-%m-%d %H:%M UTC")
 
-                for threshold in thresholds:
-                    if threshold - 1 < hours_left <= threshold:
-                        structure_id = s["structure_id"]
-                        name = s.get("structure_name", f"Structure {structure_id}")
-                        type_id = s.get("structure_type_id", 0)
-                        structure_type = get_structure_type_name(type_id)
-                        system_name = get_system_name(access_token, s.get("solar_system_id"))
-                        alert_time = now.strftime("%Y-%m-%d %H:%M UTC")
-                        msg = (
-                            f"**{name}** ({structure_type})\nSystem: {system_name}\n"
-                            f"Fuel remaining: {int(hours_left)}h\nAlerted at: {alert_time}"
-                        )
-                        alert_messages[threshold].append(msg)
+            msg = f"**{name}** ({structure_type})\nSystem: {system_name}\nFuel remaining: {int(hours)}h {minutes}m\nAlerted at: {alert_time}"
+            low_fuel_structures.append(msg)
 
-        posted = False
-        for threshold in thresholds:
-            if alert_messages[threshold]:
-                header = f"⚠️ Fuel Alert: {threshold}h Remaining"
-                post_to_discord("\n\n".join([header] + alert_messages[threshold]))
-                posted = True
-
-        if not posted:
-            print("✅ All structures have more than 72h of fuel.")
+        if low_fuel_structures:
+            message = "\n\n".join(["🚨 **Test Fuel Alert** 🚨"] + low_fuel_structures)
+            post_to_discord(message)
+            print("✅ Test fuel alert posted to Discord.")
+        else:
+            print("✅ All structures are above threshold.")
 
     except Exception as e:
         print("❌ Error:", str(e))
