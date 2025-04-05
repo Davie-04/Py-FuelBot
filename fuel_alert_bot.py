@@ -8,10 +8,19 @@ DISCORD_CHANNEL_ID = os.getenv("DISCORD_CHANNEL_ID")
 DISCORD_BOT_TOKEN = os.getenv("DISCORD_BOT_TOKEN")
 CLIENT_ID = os.getenv("CLIENT_ID")
 CLIENT_SECRET = os.getenv("CLIENT_SECRET")
-
 EVE_REFRESH_TOKEN = os.getenv("EVE_REFRESH_TOKEN")  # Access refresh token from environment
 
 ESI_BASE = "https://esi.evetech.net/latest"
+
+# === Station Type Lookup (structure_type_id to name) ===
+structure_type_lookup = {
+    35825: "Raitaru",
+    35827: "Athanor",
+    35828: "Azbel",
+    35829: "Fortizar",
+    35830: "Keepstar",
+    # Add other structure types as necessary
+}
 
 # === Refresh the access token using the refresh token ===
 def refresh_access_token():
@@ -60,6 +69,10 @@ def get_system_name(access_token, system_id):
         print(f"❌ Failed to fetch system name for ID: {system_id}")  # Debugging line
         return "Unknown System"
 
+# === Get structure type name from ID ===
+def get_structure_type_name(structure_type_id):
+    return structure_type_lookup.get(structure_type_id, "Unknown Type")
+
 # === Get structures ===
 def get_structures(access_token, corp_id):
     headers = {"Authorization": f"Bearer {access_token}"}
@@ -99,7 +112,8 @@ def compose_fuel_alerts(structures, access_token):
             if 0 < hours_left <= threshold:
                 # Ensure we are fetching the correct structure name
                 name = s.get("name", f"Structure {s['structure_id']}")
-                structure_type = s.get("structure_type_id", "Unknown Type")
+                structure_type_id = s.get("structure_type_id")
+                structure_type = get_structure_type_name(structure_type_id)  # Get structure type name
                 system_id = s.get("solar_system_id")  # Get the system ID
                 system_name = get_system_name(access_token, system_id) if system_id else "Unknown System"
                 
