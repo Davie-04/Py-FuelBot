@@ -1,6 +1,7 @@
 import os
 import json
 import requests
+import base64  # Add this import for base64 encoding
 from datetime import datetime, timedelta, timezone
 
 # === Configuration ===
