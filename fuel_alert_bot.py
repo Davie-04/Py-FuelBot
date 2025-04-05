@@ -97,9 +97,12 @@ def compose_fuel_alerts(structures, access_token):
 
         for threshold in thresholds:
             if 0 < hours_left <= threshold:
-                name = s.get("structure_name", f"Structure {s['structure_id']}")
+                # Ensure we are fetching the correct structure name
+                name = s.get("name", f"Structure {s['structure_id']}")
                 structure_type = s.get("structure_type_id", "Unknown Type")
-                system_name = get_system_name(access_token, s.get("solar_system_id"))
+                system_id = s.get("solar_system_id")  # Get the system ID
+                system_name = get_system_name(access_token, system_id) if system_id else "Unknown System"
+                
                 hours, rem = divmod(time_left.total_seconds(), 3600)
                 minutes = int(rem // 60)
                 alert_time = now.strftime("%Y-%m-%d %H:%M UTC")
