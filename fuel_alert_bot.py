@@ -1,46 +1,41 @@
 import os
 import json
 import requests
-import base64
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 # === Configuration ===
 DISCORD_CHANNEL_ID = os.getenv("DISCORD_CHANNEL_ID")
 DISCORD_BOT_TOKEN = os.getenv("DISCORD_BOT_TOKEN")
-# Hardcoding the refresh token for testing purposes
-EVE_REFRESH_TOKEN = "sK83A1suTEyWX+rGE7Sgdg=="  # Put the correct refresh token here
 CLIENT_ID = os.getenv("CLIENT_ID")
 CLIENT_SECRET = os.getenv("CLIENT_SECRET")
+
+EVE_REFRESH_TOKEN = os.getenv("EVE_REFRESH_TOKEN")  # Access refresh token from environment
+
 ESI_BASE = "https://esi.evetech.net/latest"
 
-# === Load EVE refresh token and get access token ===
-def load_access_token():
-    # Prepare the basic auth header with base64 encoding
-    auth_string = f"{CLIENT_ID}:{CLIENT_SECRET}"
-    b64_auth = base64.b64encode(auth_string.encode()).decode()  # Correct base64 encoding
-    
+# === Refresh the access token using the refresh token ===
+def refresh_access_token():
+    url = "https://login.eveonline.com/v2/oauth/token"
     headers = {
-        "Authorization": f"Basic {b64_auth}",
         "Content-Type": "application/x-www-form-urlencoded"
     }
     data = {
         "grant_type": "refresh_token",
-        "refresh_token": EVE_REFRESH_TOKEN
+        "refresh_token": EVE_REFRESH_TOKEN,
+        "client_id": CLIENT_ID,
+        "client_secret": CLIENT_SECRET
     }
-    
-    # Request to get the access token
-    token_url = "https://login.eveonline.com/v2/oauth/token"
-    response = requests.post(token_url, headers=headers, data=data)
-    
+    response = requests.post(url, headers=headers, data=data)
     if response.ok:
         tokens = response.json()
-        access_token = tokens.get("access_token")
-        if access_token:
-            return access_token
-        else:
-            raise Exception("Failed to retrieve access token")
+        return tokens['access_token']  # Return the new access token
     else:
         raise Exception(f"Failed to refresh access token. Status: {response.status_code}, Response: {response.text}")
+
+# === Load EVE token from file (updated to use the refreshed token directly) ===
+def load_access_token():
+    access_token = refresh_access_token()  # Get new access token from refresh token
+    return access_token
 
 # === Corporation ID from token ===
 def get_corp_id(access_token):
@@ -114,17 +109,17 @@ def compose_fuel_alerts(structures, access_token):
 # === Main ===
 def main():
     try:
-        access_token = load_access_token()  # Get the access token using the refresh token
-        corp_id = get_corp_id(access_token)  # Get the corporation ID
-        structures = get_structures(access_token, corp_id)  # Fetch structures
-        alerts = compose_fuel_alerts(structures, access_token)  # Generate fuel alerts
+        access_token = load_access_token()  # Use refreshed token
+        corp_id = get_corp_id(access_token)
+        structures = get_structures(access_token, corp_id)
+        alerts = compose_fuel_alerts(structures, access_token)
 
         sent = False
         for threshold, msgs in sorted(alerts.items()):
             if msgs:
                 label = f"⚠️ Fuel Alert: {threshold}h remaining"
                 message = "\n\n".join([label] + msgs)
-                post_to_discord(message)  # Send the alert to Discord
+                post_to_discord(message)
                 sent = True
 
         if sent:
