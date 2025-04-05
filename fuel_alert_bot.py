@@ -112,7 +112,7 @@ def compose_fuel_alerts(structures, access_token):
                 structure_name = name.split(" - ")[1] if " - " in name else name
                 
                 # Extract system name from the structure name
-                system_name = get_system_name_from_structure_name(structure_name)
+                system_name = get_system_name_from_structure_name(name)
                 
                 hours, rem = divmod(time_left.total_seconds(), 3600)
                 minutes = int(rem // 60)
