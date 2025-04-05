@@ -27,23 +27,8 @@ jobs:
       - name: Install dependencies
         run: pip install requests
 
-      - name: Create refresh token file
-        run: |
-          python -c "import json; json.dump({'refresh_token': '${{ secrets.EVE_REFRESH_TOKEN }}'}, open('refresh_token.txt', 'w'))"
-        shell: /usr/bin/bash -e {0}
-        env:
-          CLIENT_ID: ${{ secrets.CLIENT_ID }}
-          CLIENT_SECRET: ${{ secrets.CLIENT_SECRET }}
-          DISCORD_BOT_TOKEN: ${{ secrets.DISCORD_BOT_TOKEN }}
-          DISCORD_CHANNEL_ID: ${{ secrets.DISCORD_CHANNEL_ID }}
-          EVE_REFRESH_TOKEN: ${{ secrets.EVE_REFRESH_TOKEN }}
+      # Removed the "Create refresh token file" step
+      # The refresh token will be used directly from GitHub secrets
 
       - name: Run fuel alert bot
         run: python fuel_alert_bot.py
-        shell: /usr/bin/bash -e {0}
-        env:
-          CLIENT_ID: ${{ secrets.CLIENT_ID }}
-          CLIENT_SECRET: ${{ secrets.CLIENT_SECRET }}
-          DISCORD_BOT_TOKEN: ${{ secrets.DISCORD_BOT_TOKEN }}
-          DISCORD_CHANNEL_ID: ${{ secrets.DISCORD_CHANNEL_ID }}
-          EVE_REFRESH_TOKEN: ${{ secrets.EVE_REFRESH_TOKEN }}
