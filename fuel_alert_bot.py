@@ -6,28 +6,30 @@ from datetime import datetime, timedelta, timezone
 # === Configuration ===
 DISCORD_CHANNEL_ID = os.getenv("DISCORD_CHANNEL_ID")
 DISCORD_BOT_TOKEN = os.getenv("DISCORD_BOT_TOKEN")
-TOKEN_FILE = "refresh_token.txt"  # This file will contain the refresh token
+EVE_REFRESH_TOKEN = os.getenv("EVE_REFRESH_TOKEN")  # Now using the GitHub secret directly
+TOKEN_URL = "https://login.eveonline.com/v2/oauth/token"
 ESI_BASE = "https://esi.evetech.net/latest"
 
-# === Load EVE token from file ===
-def load_refresh_token():
-    with open(TOKEN_FILE, "r") as f:
-        token_data = json.load(f)
-    return token_data["refresh_token"]
-
-# === Get access token from refresh token ===
-def get_access_token(refresh_token):
-    headers = {
-        "Content-Type": "application/x-www-form-urlencoded",
-        "Authorization": f"Basic {os.getenv('CLIENT_ID')}:{os.getenv('CLIENT_SECRET')}"
-    }
+# === Get access token using the refresh token ===
+def get_access_token():
     data = {
         "grant_type": "refresh_token",
-        "refresh_token": refresh_token
+        "refresh_token": EVE_REFRESH_TOKEN,
+        "client_id": os.getenv("CLIENT_ID"),
+        "client_secret": os.getenv("CLIENT_SECRET")
     }
-    response = requests.post("https://login.eveonline.com/v2/oauth/token", data=data, headers=headers)
-    response.raise_for_status()
-    return response.json()["access_token"]
+
+    response = requests.post(TOKEN_URL, data=data)
+
+    if response.status_code == 200:
+        tokens = response.json()
+        access_token = tokens.get("access_token")
+        if access_token:
+            return access_token
+        else:
+            raise Exception("Access token not found in response.")
+    else:
+        raise Exception(f"Failed to refresh access token. Status: {response.status_code}")
 
 # === Corporation ID from token ===
 def get_corp_id(access_token):
@@ -101,8 +103,7 @@ def compose_fuel_alerts(structures, access_token):
 # === Main ===
 def main():
     try:
-        refresh_token = load_refresh_token()
-        access_token = get_access_token(refresh_token)
+        access_token = get_access_token()  # Get the access token directly
         corp_id = get_corp_id(access_token)
         structures = get_structures(access_token, corp_id)
         alerts = compose_fuel_alerts(structures, access_token)
