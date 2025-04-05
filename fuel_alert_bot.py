@@ -48,17 +48,10 @@ def get_corp_id(access_token):
     return char_info["corporation_id"]
 
 # === Get system name from ID ===
-def get_system_name(access_token, system_id):
-    headers = {"Authorization": f"Bearer {access_token}"}
-    url = f"{ESI_BASE}/universe/systems/{system_id}/"
-    res = requests.get(url, headers=headers)
-    if res.ok:
-        system_name = res.json().get("name", "Unknown System")
-        print(f"✅ System found: {system_name}")  # Debugging line
-        return system_name
-    else:
-        print(f"❌ Failed to fetch system name for ID: {system_id}")  # Debugging line
-        return "Unknown System"
+def get_system_name_from_structure_name(structure_name):
+    # Extract system name from the structure name by splitting at the hyphen.
+    parts = structure_name.split(" - ")
+    return parts[0] if len(parts) > 1 else "Unknown System"
 
 # === Get structure type name from type_id ===
 def get_structure_type_name(access_token, type_id):
@@ -113,24 +106,21 @@ def compose_fuel_alerts(structures, access_token):
                 # Ensure we are fetching the correct structure name
                 name = s.get("name", f"Structure {s['structure_id']}")
                 structure_type_id = s.get("type_id", "Unknown Type")
-                system_id = s.get("solar_system_id")  # Get the system ID
-                system_name = get_system_name(access_token, system_id) if system_id else "Unknown System"
                 structure_type = get_structure_type_name(access_token, structure_type_id)
-
-                # Remove everything before and including the hyphen from the structure name
-                clean_name = name.split(" - ")[-1]
+                
+                # Extract system name from the structure name
+                system_name = get_system_name_from_structure_name(name)
                 
                 hours, rem = divmod(time_left.total_seconds(), 3600)
                 minutes = int(rem // 60)
                 alert_time = now.strftime("%Y-%m-%d %H:%M UTC")
 
-                # Create the table format using Markdown
                 msg = (
-                    "```md\n"
-                    "| **Station Name** | **System** | **Fuel Remaining** | **Alert Time** |\n"
-                    "|------------------|------------|--------------------|----------------|\n"
-                    f"| {clean_name} ({structure_type}) | {system_name} | {int(hours)}h {minutes}m | {alert_time} |\n"
-                    "```"
+                    f"❗ Fuel Alert ❗ \n"
+                    f"**{name}** ({structure_type})\n"
+                    f"System: {system_name}\n"
+                    f"Fuel remaining: {int(hours)}h {minutes}m\n"
+                    f"Alerted at: {alert_time}"
                 )
                 alerts[threshold].append(msg)
                 break
@@ -148,7 +138,7 @@ def main():
         sent = False
         for threshold, msgs in sorted(alerts.items()):
             if msgs:
-                label = f"⚠️ Fuel Alert: {threshold}h remaining"
+                label = f"⚠️"
                 message = "\n\n".join([label] + msgs)
                 post_to_discord(message)
                 sent = True
