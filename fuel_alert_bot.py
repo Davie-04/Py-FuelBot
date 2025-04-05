@@ -47,11 +47,17 @@ def get_corp_id(access_token):
     print(f"✅ Corporation ID: {char_info['corporation_id']}")  # Debugging line
     return char_info["corporation_id"]
 
-# === Get system name from ID ===
+# === Get system name from structure name ===
 def get_system_name_from_structure_name(structure_name):
     # Extract system name from the structure name by splitting at the hyphen.
     parts = structure_name.split(" - ")
     return parts[0] if len(parts) > 1 else "Unknown System"
+
+# === Get structure name without the part before hyphen ===
+def get_structure_name_from_full_name(full_name):
+    # Remove everything before and including the hyphen
+    parts = full_name.split(" - ")
+    return parts[-1] if len(parts) > 1 else full_name
 
 # === Get structure type name from type_id ===
 def get_structure_type_name(access_token, type_id):
@@ -106,6 +112,7 @@ def compose_fuel_alerts(structures, access_token):
                 # Ensure we are fetching the correct structure name
                 name = s.get("name", f"Structure {s['structure_id']}")
                 structure_type_id = s.get("type_id", "Unknown Type")
+                structure_name = get_structure_name_from_full_name(name)  # Remove prefix before hyphen
                 structure_type = get_structure_type_name(access_token, structure_type_id)
                 
                 # Extract system name from the structure name
@@ -116,7 +123,7 @@ def compose_fuel_alerts(structures, access_token):
                 alert_time = now.strftime("%Y-%m-%d %H:%M UTC")
 
                 msg = (
-                    f"**{name}** ({structure_type})\n"
+                    f"**{structure_name}** ({structure_type})\n"
                     f"System: {system_name}\n"
                     f"Fuel remaining: {int(hours)}h {minutes}m\n"
                     f"Alerted at: {alert_time}"
