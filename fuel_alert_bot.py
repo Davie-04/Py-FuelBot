@@ -116,7 +116,8 @@ def compose_fuel_alerts(structures, access_token):
                 alert_time = now.strftime("%Y-%m-%d %H:%M UTC")
 
                 msg = (
-                    f"❗ Fuel Alert ❗ \n"
+                    f"  ❗ Fuel Alert ❗ \n"
+                    f"-------------------- \n"
                     f"**{name}** ({structure_type})\n"
                     f"System: {system_name}\n"
                     f"Fuel remaining: {int(hours)}h {minutes}m\n"
@@ -138,7 +139,7 @@ def main():
         sent = False
         for threshold, msgs in sorted(alerts.items()):
             if msgs:
-                label = f"⚠️"
+                label = f"."
                 message = "\n\n".join([label] + msgs)
                 post_to_discord(message)
                 sent = True
