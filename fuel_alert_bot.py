@@ -51,13 +51,20 @@ def get_corp_id(access_token):
 def get_system_name(access_token, system_id):
     headers = {"Authorization": f"Bearer {access_token}"}
     url = f"{ESI_BASE}/universe/systems/{system_id}/"
+    
+    print(f"✅ Requesting system name for system_id: {system_id} (URL: {url})")  # Debugging line for URL
+
     res = requests.get(url, headers=headers)
+    
+    # Log the response status and content for debugging
     if res.ok:
         system_name = res.json().get("name", "Unknown System")
-        print(f"✅ System found: {system_name}")  # Debugging line
+        print(f"✅ System found: {system_name}")  # Debugging line for successful response
         return system_name
     else:
-        print(f"❌ Failed to fetch system name for ID: {system_id}, Status Code: {res.status_code}, Response: {res.text}")  # Additional debugging info
+        print(f"❌ Failed to fetch system name for ID: {system_id}")  # Debugging line for failed response
+        print(f"❌ Status code: {res.status_code}")  # Log status code
+        print(f"❌ Response: {res.text}")  # Log the full response for further debugging
         return "Unknown System"
 
 # === Get structure type name from type_id ===
