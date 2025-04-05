@@ -50,7 +50,12 @@ def get_system_name(access_token, system_id):
     headers = {"Authorization": f"Bearer {access_token}"}
     url = f"{ESI_BASE}/universe/systems/{system_id}/"
     res = requests.get(url, headers=headers)
-    return res.json().get("name", "Unknown System") if res.ok else "Unknown System"
+    if res.ok:
+        print(f"System Name Retrieved: {res.json().get('name')}")
+        return res.json().get("name", "Unknown System")
+    else:
+        print(f"Error fetching system name for system ID: {system_id}")
+        return "Unknown System"
 
 # === Get structures ===
 def get_structures(access_token, corp_id):
