@@ -7,7 +7,8 @@ from datetime import datetime, timezone
 # === Configuration ===
 DISCORD_CHANNEL_ID = os.getenv("DISCORD_CHANNEL_ID")
 DISCORD_BOT_TOKEN = os.getenv("DISCORD_BOT_TOKEN")
-EVE_REFRESH_TOKEN = os.getenv("EVE_REFRESH_TOKEN")
+# Hardcoding the refresh token for testing purposes
+EVE_REFRESH_TOKEN = "sK83A1suTEyWX+rGE7Sgdg=="  # Put the correct refresh token here
 CLIENT_ID = os.getenv("CLIENT_ID")
 CLIENT_SECRET = os.getenv("CLIENT_SECRET")
 ESI_BASE = "https://esi.evetech.net/latest"
