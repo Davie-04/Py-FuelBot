@@ -3,7 +3,7 @@ name: Daily EVE Fuel Check
 on:
   schedule:
     - cron: '0 9 * * *'  # Runs at 09:00 UTC daily
-  workflow_dispatch:     # Also allow manual runs from GitHub UI
+  workflow_dispatch:  # Also allow manual runs from GitHub UI
 
 jobs:
   run-fuelbot:
@@ -26,9 +26,6 @@ jobs:
 
       - name: Install dependencies
         run: pip install requests
-
-      # Removed the "Create refresh token file" step
-      # The refresh token will be used directly from GitHub secrets
 
       - name: Run fuel alert bot
         run: python fuel_alert_bot.py
