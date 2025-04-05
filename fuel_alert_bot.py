@@ -53,10 +53,10 @@ def get_system_name(access_token, system_id):
     url = f"{ESI_BASE}/universe/systems/{system_id}/"
     res = requests.get(url, headers=headers)
     
-    # Log the response content for debugging
+    # Debugging response details
     print(f"Response status: {res.status_code}")  # Log status code
     print(f"Response content: {res.text}")  # Log full response content for debugging
-    
+
     if res.ok:
         system_name = res.json().get("name", "Unknown System")
         print(f"✅ System found: {system_name}")  # Debugging line
