@@ -6,35 +6,12 @@ from datetime import datetime, timedelta, timezone
 # === Configuration ===
 DISCORD_CHANNEL_ID = os.getenv("DISCORD_CHANNEL_ID")
 DISCORD_BOT_TOKEN = os.getenv("DISCORD_BOT_TOKEN")
-CLIENT_ID = os.getenv("CLIENT_ID")
-CLIENT_SECRET = os.getenv("CLIENT_SECRET")
-
-EVE_REFRESH_TOKEN = os.getenv("EVE_REFRESH_TOKEN")  # Access refresh token from environment
-
+TOKEN_FILE = "eve_tokens.json"
 ESI_BASE = "https://esi.evetech.net/latest"
 
-# === Refresh the access token using the refresh token ===
-def refresh_access_token():
-    url = "https://login.eveonline.com/v2/oauth/token"
-    headers = {
-        "Content-Type": "application/x-www-form-urlencoded"
-    }
-    data = {
-        "grant_type": "refresh_token",
-        "refresh_token": EVE_REFRESH_TOKEN,
-        "client_id": CLIENT_ID,
-        "client_secret": CLIENT_SECRET
-    }
-    response = requests.post(url, headers=headers, data=data)
-    if response.ok:
-        tokens = response.json()
-        return tokens['access_token']  # Return the new access token
-    else:
-        raise Exception(f"Failed to refresh access token. Status: {response.status_code}, Response: {response.text}")
-
-# === Load EVE token from file (updated to use the refreshed token directly) ===
+# === Load EVE token from file (You can replace this with secrets or environment variable as needed) ===
 def load_access_token():
-    access_token = refresh_access_token()  # Get new access token from refresh token
+    access_token = os.getenv('EVE_REFRESH_TOKEN')
     return access_token
 
 # === Corporation ID from token ===
@@ -74,10 +51,11 @@ def post_to_discord(message):
 # === Compose alert messages ===
 def compose_fuel_alerts(structures, access_token):
     now = datetime.now(timezone.utc)
-    thresholds = [5000, 48, 24]  # in hours
+    thresholds = [3*24, 48, 24]  # in hours
     alerts = {t: [] for t in thresholds}
 
     for s in structures:
+        print(f"Structure Data: {s}")  # Debugging line to check structure data
         fuel_expires = s.get("fuel_expires")
         if not fuel_expires:
             continue
@@ -89,14 +67,14 @@ def compose_fuel_alerts(structures, access_token):
         for threshold in thresholds:
             if 0 < hours_left <= threshold:
                 name = s.get("structure_name", f"Structure {s['structure_id']}")
-                structure_type = s.get("structure_type_id", "Unknown Type")
-                system_name = get_system_name(access_token, s.get("solar_system_id"))
+                system_id = s.get("solar_system_id", None)
+                system_name = get_system_name(access_token, system_id) if system_id else "Unknown System"
                 hours, rem = divmod(time_left.total_seconds(), 3600)
                 minutes = int(rem // 60)
                 alert_time = now.strftime("%Y-%m-%d %H:%M UTC")
 
                 msg = (
-                    f"**{name}** ({structure_type})\n"
+                    f"**{name}** ({s.get('structure_type_id', 'Unknown Type')})\n"
                     f"System: {system_name}\n"
                     f"Fuel remaining: {int(hours)}h {minutes}m\n"
                     f"Alerted at: {alert_time}"
@@ -109,7 +87,7 @@ def compose_fuel_alerts(structures, access_token):
 # === Main ===
 def main():
     try:
-        access_token = load_access_token()  # Use refreshed token
+        access_token = load_access_token()
         corp_id = get_corp_id(access_token)
         structures = get_structures(access_token, corp_id)
         alerts = compose_fuel_alerts(structures, access_token)
